@@ -1,48 +1,54 @@
 """
-Database Schemas
+Database Schemas for the E-commerce SaaS
 
-Define your MongoDB collection schemas here using Pydantic models.
-These schemas are used for data validation in your application.
+Each Pydantic model corresponds to a MongoDB collection.
+Collection name is the lowercase of the class name.
 
-Each Pydantic model represents a collection in your database.
-Model name is converted to lowercase for the collection name:
-- User -> "user" collection
-- Product -> "product" collection
-- BlogPost -> "blogs" collection
+- User -> "user"
+- Product -> "product"
+- Cart -> "cart"
+- Order -> "order"
 """
 
-from pydantic import BaseModel, Field
-from typing import Optional
-
-# Example schemas (replace with your own):
+from pydantic import BaseModel, Field, EmailStr
+from typing import Optional, List
 
 class User(BaseModel):
-    """
-    Users collection schema
-    Collection name: "user" (lowercase of class name)
-    """
+    """Users collection schema"""
     name: str = Field(..., description="Full name")
-    email: str = Field(..., description="Email address")
-    address: str = Field(..., description="Address")
-    age: Optional[int] = Field(None, ge=0, le=120, description="Age in years")
+    email: EmailStr = Field(..., description="Email address")
+    password_hash: str = Field(..., description="BCrypt password hash")
     is_active: bool = Field(True, description="Whether user is active")
+    role: str = Field("user", description="Role: user or admin")
 
 class Product(BaseModel):
-    """
-    Products collection schema
-    Collection name: "product" (lowercase of class name)
-    """
+    """Products collection schema"""
     title: str = Field(..., description="Product title")
     description: Optional[str] = Field(None, description="Product description")
     price: float = Field(..., ge=0, description="Price in dollars")
-    category: str = Field(..., description="Product category")
+    image_url: Optional[str] = Field(None, description="Primary image URL")
+    category: Optional[str] = Field(None, description="Product category")
     in_stock: bool = Field(True, description="Whether product is in stock")
 
-# Add your own schemas here:
-# --------------------------------------------------
+class CartItem(BaseModel):
+    product_id: str = Field(..., description="ID of the product")
+    quantity: int = Field(1, ge=1, description="Quantity of the product")
 
-# Note: The Flames database viewer will automatically:
-# 1. Read these schemas from GET /schema endpoint
-# 2. Use them for document validation when creating/editing
-# 3. Handle all database operations (CRUD) directly
-# 4. You don't need to create any database endpoints!
+class Cart(BaseModel):
+    user_id: str = Field(..., description="Owner user id")
+    items: List[CartItem] = Field(default_factory=list, description="List of cart items")
+
+class OrderItem(BaseModel):
+    product_id: str
+    title: str
+    price: float
+    quantity: int
+    subtotal: float
+
+class Order(BaseModel):
+    user_id: str
+    items: List[OrderItem]
+    amount: float
+    currency: str = Field("usd")
+    status: str = Field("pending", description="pending|paid|failed|refunded")
+    payment_ref: Optional[str] = Field(None, description="Reference from payment provider")
